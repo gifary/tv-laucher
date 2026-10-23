@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Home</string>
+    <string name="section_apps">Apps</string>
+    <string name="section_favorites">Favorites</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_prayer">Prayer Time</string>
+    <string name="section_prayer_times">Prayer Times</string>
+    <string name="section_quran">Random Quran</string>
+    <string name="section_hadith">Random Hadith</string>
+    <string name="section_videos">Videos</string>
+    <string name="hint_ok_new">Press OK for a new one</string>
+    <string name="hint_ok_play">Press OK to play</string>
+    <string name="next_prayer">Next: %1$s</string>
+    <string name="no_videos">No videos right now.</string>
+    <string name="pill_inputs_description">TV inputs</string>
+    <string name="pill_wifi_description">Wi-Fi settings</string>
+    <string name="pill_settings_description">Settings. Long press to configure remote shortcut keys.</string>
+    <string name="remote_key_service_name">Remote shortcut keys</string>
+    <string name="remote_key_service_description">Filters remote key presses and launches only shortcuts configured in this launcher.</string>
+    <string name="remote_keys_enable_hint">Enable Remote shortcut keys here. Only configured shortcut keys are consumed.</string>
+</resources>

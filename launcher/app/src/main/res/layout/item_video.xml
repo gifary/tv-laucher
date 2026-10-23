@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One video of the 4-wide grid: thumbnail on top, title and channel below.
+     Cells are added in code from the API. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="6dp"
+    android:layout_marginEnd="6dp"
+    android:layout_weight="1"
+    android:background="@drawable/content_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="116dp"
+        android:background="#101E2E">
+
+        <ImageView
+            android:id="@+id/video_thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/video_play"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_gravity="center"
+            android:alpha="0.92"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_play" />
+
+        <TextView
+            android:id="@+id/video_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|bottom"
+            android:layout_margin="6dp"
+            android:background="@drawable/badge_bg"
+            android:duplicateParentState="true"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 600"
+            android:includeFontPadding="false"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:textColor="#F2F7FC"
+            android:textSize="12sp" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/video_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:duplicateParentState="true"
+        android:ellipsize="end"
+        android:fontFamily="@font/outfit"
+        android:fontVariationSettings="'wght' 600"
+        android:maxLines="2"
+        android:textColor="@color/content_text"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/video_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:duplicateParentState="true"
+        android:ellipsize="end"
+        android:fontFamily="@font/outfit"
+        android:fontVariationSettings="'wght' 500"
+        android:maxLines="1"
+        android:textColor="@color/content_dim"
+        android:textSize="13sp" />
+</LinearLayout>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Body text on a glass card: dark while the card is lit amber. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:color="#10202F" />
+    <item android:color="#F2F7FC" />
+</selector>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dock, left to right. Package names; order is the on-screen order. -->
+    <string-array name="dock_apps">
+        <item>com.google.android.youtube.tv</item>
+        <item>com.netflix.ninja</item>
+        <item>org.smarttube.stable</item>
+        <item>com.useetv.stb</item>
+        <item>com.tcl.tv</item>
+    </string-array>
+
+    <!-- Grid columns. Keep equal to dock size so the grid lines up with it. -->
+    <integer name="columns">5</integer>
+
+    <!-- App launched by the "Live TV" entry in the Inputs menu. -->
+    <string name="live_tv_package">com.tcl.tv</string>
+
+    <!-- Shown above the clock. Empty string = time-of-day greeting. -->
+    <string name="greeting_override"></string>
+
+    <!-- MyQuran prayer schedule (api.myquran.com). The id comes from the
+         location lookup; the timezone must be URL encoded when requested. -->
+    <string name="prayer_location_id">5878a7ab84fb43402106c575658472fa</string>
+    <string name="prayer_timezone">Asia/Jakarta</string>
+
+    <!-- Location shown with the schedule, e.g. "Kab Ciamis".
+         Leave empty to use the regency name returned by the API. -->
+    <string name="prayer_location_label">Kab Ciamis</string>
+
+    <!-- Random content on the Prayer Time tab. -->
+    <string name="verse_api">https://api.myquran.com/v3/quran/random</string>
+    <string name="hadith_api">https://api.myquran.com/v3/hadis/enc/random</string>
+    <string name="video_api">https://www.dakwahhub.com/api/public/youtube/random?limit=8</string>
+
+    <!-- Remote shortcut order matches app_key_keycodes and app_key_scancodes. -->
+    <string-array name="app_keys">
+        <item>com.netflix.ninja</item>
+        <item>com.google.android.youtube.tv</item>
+        <item>com.vidio.android.tv</item>
+        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>com.tencent.qqlivei18n</item>
+        <item>com.tcl.channelplus</item>
+        <item>com.vidio.android.tv</item>
+    </string-array>
+    <string-array name="app_key_labels">
+        <item>Netflix</item>
+        <item>YouTube</item>
+        <item>VIDIO</item>
+        <item>Prime Video</item>
+        <item>WeTV</item>
+        <item>TCL Channel</item>
+        <item>VIDIO</item>
+    </string-array>
+    <string-array name="app_key_fallbacks">
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+    </string-array>
+    <!-- Android KeyEvent key codes; zero means unassigned. -->
+    <integer-array name="app_key_keycodes">
+        <item>0</item><item>0</item><item>0</item>
+        <item>0</item><item>0</item><item>0</item>
+    </integer-array>
+    <integer-array name="app_key_scancodes">
+        <item>242</item><!-- Netflix: KEY_VIDEO_PREV -->
+        <item>245</item><!-- YouTube: KEY_DISPLAY_OFF -->
+        <item>743</item><!-- Video: EV_KEY 0x02e7 -->
+        <item>752</item><!-- Prime Video: EV_KEY 0x02f0 -->
+        <item>747</item><!-- WeTV: EV_KEY 0x02eb -->
+        <item>227</item><!-- TCL Channel: EV_KEY KEY_SWITCHVIDEOMODE -->
+    </integer-array>
+
+    <!-- Android resource identifiers are lowercase; these correspond to
+         INPUT_KEY_SERVICE=1 and HOME_KEY_SERVICE=1 in the remote-key config. -->
+    <integer name="input_key_service">1</integer>
+    <integer-array name="input_key_keycodes">
+        <item>178</item>
+        <item>180</item>
+        <item>181</item>
+    </integer-array>
+    <integer name="home_key_service">1</integer>
+    <integer-array name="settings_key_keycodes">
+        <item>176</item>
+    </integer-array>
+    <integer-array name="settings_key_scancodes">
+        <item>233</item><!-- Settings: KEY_FORWARDMAIL -->
+    </integer-array>
+
+    <!-- The launcher background is the layered drawable res/drawable/wallpaper.xml. -->
+</resources>

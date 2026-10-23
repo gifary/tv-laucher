@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frosted-glass app card: translucent sheen over the wallpaper with a
+     dark base underneath, and a lit amber-glass card while focused. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#66000000" />
+                    <corners android:radius="22dp" />
+                </shape>
+            </item>
+            <item android:bottom="4dp">
+                <shape android:shape="rectangle">
+                    <gradient
+                        android:angle="315"
+                        android:endColor="#FFD166"
+                        android:startColor="#FFF8E2" />
+                    <corners android:radius="22dp" />
+                    <stroke
+                        android:width="1dp"
+                        android:color="#FFFDF2" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#59050B16" />
+                    <corners android:radius="22dp" />
+                </shape>
+            </item>
+            <item android:bottom="4dp">
+                <shape android:shape="rectangle">
+                    <gradient
+                        android:angle="315"
+                        android:endColor="#0FFFFFFF"
+                        android:startColor="#42FFFFFF" />
+                    <corners android:radius="22dp" />
+                    <stroke
+                        android:width="1dp"
+                        android:color="#4DFFFFFF" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>

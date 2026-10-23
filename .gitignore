@@ -1,0 +1,25 @@
+# Machine-specific SDK path — never publish.
+launcher/local.properties
+
+# Build output and Gradle state.
+**/build/
+.gradle/
+*.apk
+*.ap_
+
+# IDE / OS noise.
+.idea/
+*.iml
+.DS_Store
+
+# Local device state and captured binaries stay on this machine.
+backup/
+apk/
+disabled-by-us.txt
+
+# Screenshots: only the curated set below is published.
+shots/*
+!shots/92-glass-home.png
+!shots/93-prayer-top.png
+!shots/94-schedule.png
+!shots/95-hadith.png

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Secondary line (channel, duration, hint); dark slate on the lit card. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:color="#3E4C5E" />
+    <item android:color="#9DB2C8" />
+</selector>
