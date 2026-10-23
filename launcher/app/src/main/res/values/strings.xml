@@ -19,4 +19,17 @@
     <string name="remote_key_service_name">Remote shortcut keys</string>
     <string name="remote_key_service_description">Filters remote key presses and launches only shortcuts configured in this launcher.</string>
     <string name="remote_keys_enable_hint">Enable Remote shortcut keys here. Only configured shortcut keys are consumed.</string>
+
+    <!-- Prayer alerts: the T-5 reminder, then the full-screen adhan. -->
+    <string name="prayer_alert_channel">Prayer reminders</string>
+    <string name="alert_prepare_title">%1$s in %2$d minutes</string>
+    <string name="alert_banner_label">PRAYER ALERT</string>
+    <string name="adhan_kicker">ADHAN</string>
+    <string name="adhan_title">Adzan %1$s</string>
+    <string name="adhan_stop">Stop</string>
+    <string name="adhan_stop_hint">Press OK to stop</string>
+    <string name="adhan_stops_in">Stops by itself in %1$s</string>
+    <string name="adhan_missing_hint">No adhan recording found: using the TV alarm tone</string>
+    <string name="media_pause_listener_name">Pause media for the adhan</string>
+    <string name="media_pause_listener_description">Lets the launcher stop music and video when the adhan starts.</string>
 </resources>

@@ -18,14 +18,31 @@
     <!-- Shown above the clock. Empty string = time-of-day greeting. -->
     <string name="greeting_override"></string>
 
-    <!-- MyQuran prayer schedule (api.myquran.com). The id comes from the
-         location lookup; the timezone must be URL encoded when requested. -->
+    <!-- Prayer times: KEMENAG (method 20) through api.aladhan.com, from the
+         device's own coordinates. The place name shown with the schedule is
+         reverse geocoded from those coordinates with OpenStreetMap. -->
+    <string name="aladhan_timings_api">https://api.aladhan.com/v1/timings/</string>
+    <integer name="prayer_method_id">20</integer>
+    <string name="reverse_geocode_api">https://nominatim.openstreetmap.org/reverse</string>
+
+    <!-- Fallback schedule, used only when the TV has no location fix. The id
+         comes from the location lookup; the timezone must be URL encoded. -->
     <string name="prayer_location_id">5878a7ab84fb43402106c575658472fa</string>
     <string name="prayer_timezone">Asia/Jakarta</string>
 
-    <!-- Location shown with the schedule, e.g. "Kab Ciamis".
-         Leave empty to use the regency name returned by the API. -->
+    <!-- Shown as the location only when nothing better is known, e.g. the
+         reverse geocoded place name. -->
     <string name="prayer_location_label">Kab Ciamis</string>
+
+    <!-- Prayer alerts. The reminder fires lead minutes before each of the
+         five prayers; at prayer time the adhan takes the screen and plays
+         for auto-stop minutes (or until OK is pressed). -->
+    <bool name="prayer_alerts_enabled">true</bool>
+    <integer name="prayer_alert_lead_minutes">5</integer>
+    <integer name="adhan_auto_stop_minutes">10</integer>
+    <!-- Above zero arms a test pair instead of the real one: reminder at
+         now + N seconds, adhan ten seconds later. Leave at 0 normally. -->
+    <integer name="prayer_alert_test_delay_seconds">0</integer>
 
     <!-- Random content on the Prayer Time tab. -->
     <string name="verse_api">https://api.myquran.com/v3/quran/random</string>

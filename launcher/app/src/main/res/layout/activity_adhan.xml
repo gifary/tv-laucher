@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full-screen adhan: one prayer in very large type and one big button. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/wallpaper">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="80dp"
+        android:paddingEnd="80dp">
+
+        <TextView
+            android:id="@+id/adhan_kicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 700"
+            android:letterSpacing="0.3"
+            android:text="@string/adhan_kicker"
+            android:textColor="#FFD166"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/adhan_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 700"
+            android:textColor="#F2F7FC"
+            android:textSize="54sp" />
+
+        <TextView
+            android:id="@+id/adhan_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 700"
+            android:textColor="#FFD166"
+            android:textSize="104sp" />
+
+        <TextView
+            android:id="@+id/adhan_location"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 600"
+            android:textColor="#93A8BF"
+            android:textSize="28sp" />
+
+        <TextView
+            android:id="@+id/adhan_remaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 600"
+            android:textColor="#EAF2FA"
+            android:textSize="26sp" />
+
+        <TextView
+            android:id="@+id/adhan_stop"
+            android:layout_width="380dp"
+            android:layout_height="92dp"
+            android:layout_marginTop="30dp"
+            android:background="@drawable/app_card"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 700"
+            android:gravity="center"
+            android:text="@string/adhan_stop"
+            android:textColor="@color/adhan_stop_text"
+            android:textSize="38sp" />
+
+        <TextView
+            android:id="@+id/adhan_stop_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 600"
+            android:text="@string/adhan_stop_hint"
+            android:textColor="#93A8BF"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/adhan_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 600"
+            android:text="@string/adhan_missing_hint"
+            android:textColor="#FFD166"
+            android:textSize="20sp"
+            android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

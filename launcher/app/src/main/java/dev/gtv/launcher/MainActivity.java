@@ -1,20 +1,24 @@
 package dev.gtv.launcher;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,6 +62,8 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     // random ayah / hadith cards; dakwahhub.com supplies the video list.
     private static final String PRAYER_API =
             "https://api.myquran.com/v3/sholat/jadwal/%s/today?tz=%s";
+    /** How long the background refresh waits for a location fix. */
+    private static final long LOCATION_TIMEOUT_MS = 10_000L;
     private static final String[] PRAYER_NAMES = {"Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya"};
     private static final String[] PRAYER_KEYS = {"subuh", "dzuhur", "ashar", "maghrib", "isya"};
     private static final String[] SCHED_KEYS =
@@ -129,6 +135,23 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         }
     };
 
+    // Five-minute prayer alert banner: overlays Home, never takes focus.
+    private View alertBanner;
+    private TextView alertTitle;
+    private TextView alertText;
+    /** The last date the clock drew; detects the midnight roll-over. */
+    private String shownDay;
+
+    private final PrayerAlerts.Banner alertSink =
+            (title, text) -> runOnUiThread(() -> showAlertBanner(title, text));
+
+    private final Runnable hideAlertBanner = () -> {
+        if (alertBanner == null) return;
+        alertBanner.animate().alpha(0f).setDuration(300)
+                .withEndAction(() -> alertBanner.setVisibility(View.GONE))
+                .start();
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -167,6 +190,9 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         videoGrid = findViewById(R.id.video_grid);
         scheduleRows[0] = findViewById(R.id.schedule_row1);
         scheduleRows[1] = findViewById(R.id.schedule_row2);
+        alertBanner = findViewById(R.id.alert_banner);
+        alertTitle = findViewById(R.id.alert_banner_title);
+        alertText = findViewById(R.id.alert_banner_text);
 
         glow.setAlpha(0f);
 
@@ -184,6 +210,8 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
 
         updateClock();
         loadPrayer();
+        PrayerScheduler.arm(this);      // next reminder/adhan from the cache
+        askForPermissions();
         loadVerse();
         pendingRemoteInputs = RemoteKeyService.ACTION_SHOW_INPUTS.equals(getIntent().getAction());
     }
@@ -192,6 +220,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     protected void onResume() {
         super.onResume();
         hideSystemUi();
+        PrayerAlerts.setBanner(alertSink);
         handler.removeCallbacks(tick);
         handler.post(tick);
         rebuildIfNeeded();
@@ -207,6 +236,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     @Override
     protected void onPause() {
         super.onPause();
+        PrayerAlerts.setBanner(null);   // the notification tray takes over here
         handler.removeCallbacks(tick);
         saveFocus();
     }
@@ -214,8 +244,24 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacks(hideAlertBanner);
+        if (alertBanner != null) alertBanner.animate().cancel();
         unregisterReceiver(packageReceiver);
         io.shutdownNow();
+    }
+
+    /** The T-5 warning on Home: big amber line, quiet detail line, 30 seconds. */
+    private void showAlertBanner(String title, String text) {
+        if (alertBanner == null) return;
+        alertTitle.setText(title);
+        alertText.setText(text);
+        handler.removeCallbacks(hideAlertBanner);
+        alertBanner.animate().cancel();
+        alertBanner.setAlpha(0f);
+        alertBanner.setVisibility(View.VISIBLE);
+        alertBanner.animate().alpha(1f).setDuration(240).start();
+        handler.postDelayed(hideAlertBanner, 30_000L);
+        Log.i(PrayerAlerts.TAG, "banner on Home: " + title + " / " + text);
     }
 
     private void hideSystemUi() {
@@ -523,6 +569,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         }
         if (!TextUtils.isEmpty(location)) prayerLocation.setText(location);
         updateScheduleHighlight();
+        PrayerScheduler.arm(this);      // fresh times may move the alerts
     }
 
     /** Amber time plus a lighter card for whichever prayer comes next. */
@@ -739,6 +786,41 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         date.setText(dateFmt.format(now));
         prayer.setText(prayerLabel(now));
         updateScheduleHighlight();
+
+        String day = dayFmt.format(now);
+        if (shownDay == null) {
+            shownDay = day;
+        } else if (!shownDay.equals(day)) {
+            shownDay = day;             // midnight: new prayer day
+            loadPrayer();
+            PrayerScheduler.arm(this);  // line up the new day's alerts
+        }
+    }
+
+    /** One round of permission asks: coordinates for the prayer times (on any
+     *  Android version) and the notification on 13+. The banner and the adhan
+     *  screen work even when both are refused. */
+    private void askForPermissions() {
+        List<String> want = new ArrayList<>();
+        try {
+            // Approximate is enough for city-level times, but asking for both
+            // lets Android 12+ offer the choice without asking again later.
+            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                want.add(Manifest.permission.ACCESS_FINE_LOCATION);
+                want.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            }
+            if (Build.VERSION.SDK_INT >= 33
+                    && getResources().getBoolean(R.bool.prayer_alerts_enabled)
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                want.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            if (!want.isEmpty()) {
+                requestPermissions(want.toArray(new String[0]), 901);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     // ------------------------------------------------- prayer, verse, hadith
@@ -768,8 +850,12 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     }
 
-    /** The place shown as the schedule's location, e.g. "Kab Ciamis". */
+    /** The place shown with the schedule. First the name reverse geocoded
+     *  from the TV's own coordinates, then the config name, then whatever
+     *  the fallback API returned. */
     private String locationLabel(JSONObject source) {
+        String place = source == null ? "" : source.optString("place", "");
+        if (!TextUtils.isEmpty(place)) return place;
         String custom = getString(R.string.prayer_location_label);
         if (!TextUtils.isEmpty(custom)) return custom;
         String kabko = source == null ? "" : source.optString("kabko", "");
@@ -797,40 +883,114 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         io.execute(() -> fetchPrayer(today));
     }
 
+    /** Fresh times for today. Preferred source: the device's own coordinates
+     *  through api.aladhan.com with KEMENAG's method 20. When the TV has no
+     *  location (permission refused, no provider, no fix) or that call fails,
+     *  the configured place in api.myquran.com is used instead. */
     private void fetchPrayer(String today) {
+        try {
+            Geo.Place place = Geo.locate(this, LOCATION_TIMEOUT_MS);
+            JSONObject fromPlace = place == null ? null : aladhan(today, place);
+            JSONObject data = fromPlace != null ? fromPlace : myQuran(today);
+            if (data == null) return;           // offline: whatever is on screen stays
+            Log.i(PrayerAlerts.TAG, place == null
+                    ? "no location fix: myquran fallback"
+                    : fromPlace != null
+                            ? "times from aladhan (KEMENAG), place '" + place.label + "'"
+                            : "aladhan failed: myquran fallback");
+
+            JSONObject saved = new JSONObject();
+            saved.put("date", today);
+            saved.put("times", data.optJSONObject("times"));
+            saved.put("place", data.optString("place", ""));
+            saved.put("kabko", data.optString("kabko", ""));
+            saved.put("prov", data.optString("prov", ""));
+            getSharedPreferences(PREFS, MODE_PRIVATE)
+                    .edit().putString(KEY_PRAYER, saved.toString()).apply();
+
+            final JSONObject times = saved.optJSONObject("times");
+            final String location = locationLabel(saved);
+            final String[] parsed = timesOf(times);
+            handler.post(() -> {
+                prayerTimes = parsed;
+                fillSchedule(times, location);
+                updateClock();
+            });
+        } catch (Exception ignored) {
+            // Offline: whatever is on screen (cache or greeting) stays put.
+        }
+    }
+
+    /** KEMENAG times for the coordinates, in the app's lowercase keys. */
+    private JSONObject aladhan(String today, Geo.Place place) {
+        try {
+            String[] ymd = today.split("-");
+            String spec = String.format(Locale.US,
+                    "%s%s-%s-%s?latitude=%s&longitude=%s&method=%d",   // DD-MM-YYYY
+                    getString(R.string.aladhan_timings_api),
+                    ymd[2], ymd[1], ymd[0],
+                    place.latText(), place.lngText(),
+                    getResources().getInteger(R.integer.prayer_method_id));
+            JSONObject data = new JSONObject(Net.get(spec)).optJSONObject("data");
+            JSONObject timings = data == null ? null : data.optJSONObject("timings");
+            if (timings == null) return null;
+
+            JSONObject times = new JSONObject();
+            copyTime(times, timings, "imsak", "Imsak");
+            copyTime(times, timings, "subuh", "Fajr");
+            copyTime(times, timings, "terbit", "Sunrise");
+            copyTime(times, timings, "dzuhur", "Dhuhr");
+            copyTime(times, timings, "ashar", "Asr");
+            copyTime(times, timings, "maghrib", "Maghrib");
+            copyTime(times, timings, "isya", "Isha");
+            // KEMENAG publishes no Dhuha, so that tile stays blank.
+
+            JSONObject out = new JSONObject();
+            out.put("times", times);
+            out.put("place", place.label);
+            return out;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** "04:03 (WIB)" -> "04:03". */
+    private static void copyTime(JSONObject times, JSONObject timings,
+                                 String key, String source) {
+        String value = timings.optString(source, "");
+        int cut = value.indexOf(' ');
+        if (cut > 0) value = value.substring(0, cut);
+        try {
+            if (!value.isEmpty()) times.put(key, value);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** The configured place in api.myquran.com: the fallback for TVs that
+     *  never get a location fix. */
+    private JSONObject myQuran(String today) {
         try {
             String url = String.format(Locale.US, PRAYER_API,
                     getString(R.string.prayer_location_id),
                     URLEncoder.encode(getString(R.string.prayer_timezone), "UTF-8"));
             JSONObject data = new JSONObject(Net.get(url)).optJSONObject("data");
             JSONObject jadwal = data == null ? null : data.optJSONObject("jadwal");
-            if (jadwal == null) return;
+            if (jadwal == null) return null;
 
             JSONObject day = jadwal.optJSONObject(today);
             if (day == null) {
                 Iterator<String> keys = jadwal.keys();
                 if (keys.hasNext()) day = jadwal.optJSONObject(keys.next());
             }
-            if (day == null) return;
+            if (day == null) return null;
 
-            JSONObject saved = new JSONObject();
-            saved.put("date", today);
-            saved.put("times", day);
-            saved.put("kabko", data.optString("kabko", ""));
-            saved.put("prov", data.optString("prov", ""));
-            getSharedPreferences(PREFS, MODE_PRIVATE)
-                    .edit().putString(KEY_PRAYER, saved.toString()).apply();
-
-            String[] times = timesOf(day);
-            String location = locationLabel(data);
-            JSONObject finalDay = day;
-            handler.post(() -> {
-                prayerTimes = times;
-                fillSchedule(finalDay, location);
-                updateClock();
-            });
-        } catch (Exception ignored) {
-            // Offline: whatever is on screen (cache or greeting) stays put.
+            JSONObject out = new JSONObject();
+            out.put("times", day);
+            out.put("kabko", data.optString("kabko", ""));
+            out.put("prov", data.optString("prov", ""));
+            return out;
+        } catch (Exception e) {
+            return null;
         }
     }
 

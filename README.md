@@ -13,7 +13,8 @@ under the clock, a random verse above the dock:
 ![Home with glass cards and page switch](shots/92-glass-home.png)
 
 **Prayer Time** — all eight prayer times with the next one highlighted, the
-location label, and a random Quran card (Arabic RTL, translation LTR):
+place name from the TV's own location ("Ciamis, Jawa Barat" in the example),
+and a random Quran card (Arabic RTL, translation LTR):
 
 ![Prayer schedule with the next prayer highlighted](shots/94-schedule.png)
 
@@ -45,11 +46,13 @@ gradle -p launcher assembleDebug
   `127.0.0.1:15555` through `tools/relay.py`).
 
 Install the APK and switch the remote-key service back on afterwards, because
-an install resets it:
+an install resets it. The prayer alerts also need the media pause listener
+allowed — it pauses a playing video when the adhan starts:
 
 ```sh
 python3 tools/tv.py --install launcher/app/build/outputs/apk/debug/app-debug.apk
 python3 tools/tv.py shell 'settings put secure accessibility_enabled 1'
+python3 tools/tv.py shell 'cmd notification allow_listener dev.gtv.launcher/dev.gtv.launcher.MediaPauseListener'
 ```
 
 `backup/`, `apk/`, `disabled-by-us.txt`, and `shots/` (beyond the four images
@@ -137,14 +140,25 @@ slides) with two pages:
 - **Home** — clock, the next prayer under the date, the app grid, a random
   Quran verse above the dock, and the utility pills.
 - **Prayer Time** — today's full schedule, all eight times with the next
-  prayer highlighted and `prayer_location_label` (for example "Kab Ciamis")
-  shown as the location; then a random Quran card with the Arabic in RTL and
-  the translation in LTR, a random hadith with its takhrij, and a 4-wide grid
-  of random videos. Pressing OK on a video opens it in leanback YouTube.
+  prayer highlighted and the place name (for example "Ciamis, Jawa Barat")
+  reverse geocoded from the TV's own coordinates; then a random Quran card
+  with the Arabic in RTL and the translation in LTR, a random hadith with
+  its takhrij, and a 4-wide grid of random videos. Pressing OK on a video
+  opens it in leanback YouTube.
 
 Left/Right on the switch changes pages, OK steps into the page's content,
-Down from the switch enters the content, and Back returns to Home. Prayer
-times, the verse, the hadith, and the videos are fetched from the API URLs in
+Down from the switch enters the content, and Back returns to Home.
+
+Prayer times are calculated from the TV's own coordinates through
+`api.aladhan.com` with KEMENAG's calculation method (`prayer_method_id`,
+20), and the place name above the schedule is reverse geocoded from those
+coordinates through OpenStreetMap's Nominatim and cached until the TV moves
+a few kilometres. Location permission is asked for on first launch; when the
+TV has no fix (permission refused, no provider), the schedule falls back to
+`prayer_location_id` in `api.myquran.com` and to the `prayer_location_label`
+name. KEMENAG publishes no Dhuha time, so that tile stays blank (`--:--`).
+
+The verse, the hadith, and the videos are fetched from the API URLs in
 `config.xml` (`verse_api`, `hadith_api`, `video_api`) and cached in
 SharedPreferences, so the pages keep showing the last content offline.
 Thumbnails are decoded through `Net.java`, which also keeps a small in-memory
@@ -155,6 +169,42 @@ The current wallpaper is a layered deep-navy, warm-amber, and teal gradient in
 adjust the background. To use an image, add an image resource under
 `launcher/app/src/main/res/drawable/` and point the root background in
 `launcher/app/src/main/res/layout/activity_main.xml` at that drawable.
+
+## Prayer alerts
+
+With `prayer_alerts_enabled` set in `config.xml`, the launcher watches the
+five prayers:
+
+- `prayer_alert_lead_minutes` (5) before prayer time a notification is
+  posted and, while Home is in front, an amber banner appears under the
+  clock.
+- At prayer time the adhan starts: the sound first, then a full-screen
+  notification raises the adhan screen over whatever is playing, while
+  `MediaPauseListener` (a notification listener) pauses the playing video
+  a moment earlier. The screen shows the prayer in very large type, the
+  time, the place, and a countdown; **OK or Back stops it**, and it stops
+  by itself after `adhan_auto_stop_minutes` (10).
+
+The sound is a CC0 recording, *Beautiful adhan* by Adam-synagda from
+Wikimedia Commons (CC0 1.0), shipped as
+`launcher/app/src/main/res/raw/adhan.ogg`; if that file is missing the
+device's alarm tone is used instead. It plays on the media stream at
+whatever volume the family has set — the launcher never changes the
+volume.
+
+The alarms are exact (`setExactAndAllowWhileIdle`, falling back to a
+non-exact alarm where Android 12+ refuses) and re-armed on boot, after
+every schedule refresh, and at midnight. Setting
+`prayer_alert_test_delay_seconds` above zero swaps the real pair for a test
+one — reminder at now + N seconds and the adhan ten seconds later — which
+is handy for trying the flow on a device; leave it at 0.
+
+The launcher asks for location and, on Android 13+, notification permission
+on first launch. After an install, allow the media pause listener:
+
+```sh
+python3 tools/tv.py shell 'cmd notification allow_listener dev.gtv.launcher/dev.gtv.launcher.MediaPauseListener'
+```
 
 ## Optional Private DNS
 

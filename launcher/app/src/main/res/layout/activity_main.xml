@@ -521,4 +521,59 @@
             </ScrollView>
         </FrameLayout>
     </LinearLayout>
+
+    <!-- Five-minute prayer warning: an overlay that never takes focus. -->
+    <LinearLayout
+        android:id="@+id/alert_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginStart="170dp"
+        android:layout_marginEnd="170dp"
+        android:layout_marginTop="150dp"
+        android:background="@drawable/alert_banner"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="32dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="20dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/alert_banner_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 700"
+                android:textColor="#FFD166"
+                android:textSize="34sp" />
+
+            <TextView
+                android:id="@+id/alert_banner_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 600"
+                android:textColor="#EAF2FA"
+                android:textSize="24sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/outfit"
+            android:fontVariationSettings="'wght' 700"
+            android:letterSpacing="0.12"
+            android:text="@string/alert_banner_label"
+            android:textColor="#FFD166"
+            android:textSize="20sp" />
+    </LinearLayout>
 </FrameLayout>

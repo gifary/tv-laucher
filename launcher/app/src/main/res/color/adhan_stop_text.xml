@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adhan Stop button: light text on the frosted card, dark on amber focus. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#10202F" android:state_focused="true" />
+    <item android:color="#EAF2FA" />
+</selector>

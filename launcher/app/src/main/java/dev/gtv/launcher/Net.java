@@ -27,10 +27,22 @@ final class Net {
     }
 
     static String get(String spec) throws Exception {
+        return get(spec, null, null);
+    }
+
+    /** Same, with a User-Agent and Accept-Language: reverse geocoders ask
+     *  for both (Nominatim's usage policy wants to know who is calling). */
+    static String get(String spec, String userAgent, String acceptLanguage) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(spec).openConnection();
         c.setConnectTimeout(8000);
         c.setReadTimeout(8000);
         c.setRequestProperty("Accept", "application/json");
+        if (userAgent != null && !userAgent.isEmpty()) {
+            c.setRequestProperty("User-Agent", userAgent);
+        }
+        if (acceptLanguage != null && !acceptLanguage.isEmpty()) {
+            c.setRequestProperty("Accept-Language", acceptLanguage);
+        }
         try {
             try (InputStream in = c.getInputStream();
                  BufferedReader r =
