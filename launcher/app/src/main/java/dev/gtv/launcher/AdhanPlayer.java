@@ -15,8 +15,8 @@ import android.util.Log;
 
 /** Plays the adhan on the media stream - the one the remote's volume buttons
  *  control - at whatever volume the viewer has set, holding focus so other
- *  players pause, pausing their media sessions, and switching itself off after
- *  the configured number of minutes. The volume is never touched.
+ *  players pause, pausing their media sessions, and stopping itself when the
+ *  recording ends. The volume is never touched.
  *
  *  The sound lives here rather than in the activity on purpose: it has to
  *  start from the broadcast receiver and keep playing even if the adhan
@@ -24,6 +24,7 @@ import android.util.Log;
 final class AdhanPlayer {
 
     private static final long LOCK_EXTRA_MS = 60_000L;
+    private static final long SAFETY_GRACE_MS = 30_000L;
 
     private static MediaPlayer player;
     private static AudioManager audio;
@@ -41,11 +42,14 @@ final class AdhanPlayer {
     private AdhanPlayer() {
     }
 
-    /** Starts the adhan. A second call while it plays is ignored. */
-    static synchronized void start(Context ctx, long durationMs) {
+    /** Starts the adhan and plays it through once. A second call while it
+     *  plays is ignored. */
+    static synchronized void start(Context ctx) {
         if (playing) return;
         app = ctx.getApplicationContext();
         handler = new Handler(Looper.getMainLooper());
+        playing = true;
+        endAt = 0;
 
         requestFocus();
 
@@ -58,16 +62,34 @@ final class AdhanPlayer {
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build());
                 player.setDataSource(app, uri);
-                player.setLooping(true);
-                player.setOnPreparedListener(MediaPlayer::start);
+                player.setLooping(false);
+                player.setOnPreparedListener(mp -> {
+                    if (!playing) return;       // stopped while preparing
+                    long duration = Math.max(0, mp.getDuration());
+                    if (duration > 0) {
+                        // The screen counts down to the end of the recording
+                        // and everything closes when the last second plays.
+                        endAt = System.currentTimeMillis() + duration;
+                        scheduleSafetyStop(duration + SAFETY_GRACE_MS);
+                    } else {
+                        scheduleSafetyStop(safetyCap());
+                    }
+                    mp.start();
+                });
+                // Finished on its own: close the screen, notification and all.
+                player.setOnCompletionListener(mp -> stop());
                 player.setOnErrorListener((mp, what, extra) -> {
                     releasePlayer();
+                    stop();
                     return true;
                 });
                 player.prepareAsync();
             } catch (Exception e) {
                 releasePlayer();
+                scheduleSafetyStop(safetyCap());
             }
+        } else {
+            scheduleSafetyStop(safetyCap());
         }
 
         PowerManager pm = (PowerManager) app.getSystemService(Context.POWER_SERVICE);
@@ -75,7 +97,7 @@ final class AdhanPlayer {
             wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "gtv:adhan");
             wake.setReferenceCounted(false);
             try {
-                wake.acquire(durationMs + LOCK_EXTRA_MS);
+                wake.acquire(safetyCap() + LOCK_EXTRA_MS);
             } catch (Exception ignored) {
             }
         }
@@ -85,12 +107,8 @@ final class AdhanPlayer {
         if (handler != null) {
             handler.postDelayed(() -> MediaPauseListener.pauseAll(app), 1_500L);
             handler.postDelayed(() -> MediaPauseListener.pauseAll(app), 5_000L);
-            autoStop = AdhanPlayer::stop;
-            handler.postDelayed(autoStop, durationMs);
         }
 
-        endAt = System.currentTimeMillis() + durationMs;
-        playing = true;
         Log.i(PrayerAlerts.TAG, "adhan sound started ("
                 + (usingSystemTone(app) ? "device tone" : "res/raw/adhan") + ")");
     }
@@ -102,6 +120,7 @@ final class AdhanPlayer {
 
         if (handler != null && autoStop != null) handler.removeCallbacks(autoStop);
         autoStop = null;
+        endAt = 0;
 
         releasePlayer();
 
@@ -134,17 +153,30 @@ final class AdhanPlayer {
         return playing;
     }
 
-    /** When the adhan switches itself off; the activity counts down to it. */
+    /** When the recording ends; zero until the player knows its length. */
     static long endAt() {
         return endAt;
     }
 
-    /** Called by the adhan screen so an auto-stop closes it too. */
+    /** Called by the adhan screen so the end of the recording closes it too. */
     static synchronized void setStoppedListener(Runnable r) {
         stoppedListener = r;
     }
 
     // ------------------------------------------------------------ internals
+
+    /** A guard for a broken or endless file: the configured cap, never the
+     *  normal exit (completion handles that). */
+    private static long safetyCap() {
+        return app.getResources().getInteger(R.integer.adhan_max_minutes) * 60_000L;
+    }
+
+    private static void scheduleSafetyStop(long delayMs) {
+        if (handler == null) return;
+        if (autoStop != null) handler.removeCallbacks(autoStop);
+        autoStop = AdhanPlayer::stop;
+        handler.postDelayed(autoStop, Math.max(5_000L, delayMs));
+    }
 
     private static void requestFocus() {
         audio = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);

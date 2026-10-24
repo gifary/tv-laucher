@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark wash over the Nabawi photo so the white and gold type stays readable
+     against the bright sky. Fades out by the lower third, leaving the mosque
+     and courtyard at full colour. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#C4080D18"
+        android:centerColor="#80080D18"
+        android:endColor="#00080D18" />
+</shape>

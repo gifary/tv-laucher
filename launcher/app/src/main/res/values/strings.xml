@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Home</string>
     <string name="section_apps">Apps</string>
-    <string name="section_favorites">Favorites</string>
     <string name="tab_home">Home</string>
+    <string name="tab_apps">Apps</string>
     <string name="tab_prayer">Prayer Time</string>
     <string name="section_prayer_times">Prayer Times</string>
     <string name="section_quran">Random Quran</string>
@@ -24,12 +24,28 @@
     <string name="prayer_alert_channel">Prayer reminders</string>
     <string name="alert_prepare_title">%1$s in %2$d minutes</string>
     <string name="alert_banner_label">PRAYER ALERT</string>
-    <string name="adhan_kicker">ADHAN</string>
     <string name="adhan_title">Adzan %1$s</string>
     <string name="adhan_stop">Stop</string>
     <string name="adhan_stop_hint">Press OK to stop</string>
-    <string name="adhan_stops_in">Stops by itself in %1$s</string>
+    <string name="adhan_scene_description">Masjid an-Nabawi at sunset</string>
     <string name="adhan_missing_hint">No adhan recording found: using the TV alarm tone</string>
     <string name="media_pause_listener_name">Pause media for the adhan</string>
     <string name="media_pause_listener_description">Lets the launcher stop music and video when the adhan starts.</string>
+
+    <!-- The twelve Hijri months as Indonesia writes them, indexed by the
+         Umm al-Qura month number (0 = Muharram). -->
+    <string-array name="hijri_months">
+        <item>Muharram</item>
+        <item>Safar</item>
+        <item>Rabiul Awwal</item>
+        <item>Rabiul Akhir</item>
+        <item>Jumadil Awal</item>
+        <item>Jumadil Akhir</item>
+        <item>Rajab</item>
+        <item>Sya\'ban</item>
+        <item>Ramadhan</item>
+        <item>Syawal</item>
+        <item>Zulkaidah</item>
+        <item>Zulhijjah</item>
+    </string-array>
 </resources>

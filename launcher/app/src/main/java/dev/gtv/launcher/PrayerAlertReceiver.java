@@ -43,17 +43,14 @@ public class PrayerAlertReceiver extends BroadcastReceiver {
     }
 
     private void startAdhan(Context ctx, String name, String time, String location) {
-        long stopAfter = ctx.getResources()
-                .getInteger(R.integer.adhan_auto_stop_minutes) * 60_000L;
-
         Log.i(PrayerAlerts.TAG, "adhan for " + name + " " + time
-                + " (auto stop in " + (stopAfter / 60_000L) + " min)");
+                + " (plays once, then closes)");
 
         // The time is here: drop the "in 5 minutes" reminder if it is up.
         PrayerAlerts.cancelReminder(ctx);
 
         // Sound first: it survives even when the screen stays on another app.
-        AdhanPlayer.start(ctx, stopAfter);
+        AdhanPlayer.start(ctx);
 
         Intent screen = new Intent(ctx, AdhanActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK

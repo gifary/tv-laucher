@@ -9,6 +9,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.icu.util.Calendar;
+import android.icu.util.ULocale;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
 import android.net.Uri;
@@ -31,7 +33,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONArray;
@@ -41,11 +42,9 @@ import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -76,14 +75,20 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     private static final int VIDEO_COLUMNS = 4;
     private static final String YOUTUBE_TV = "com.google.android.youtube.tv";
 
-    private FocusRecyclerView grid, dock;
-    private AppAdapter gridAdapter, dockAdapter;
+    /** The pages, in tab-bar order: Home (favourites), Apps, Prayer Time. */
+    private static final int PAGE_HOME = 0;
+    private static final int PAGE_APPS = 1;
+    private static final int PAGE_PRAYER = 2;
+
+    private FocusRecyclerView favGrid, appGrid;
+    private AppAdapter favAdapter, appAdapter;
     private GlowView glow;
-    private TextView prayer, clock, date, verse, verseRef;
+    private TextView prayer, clock, date, hijri, verse, verseRef;
     private ImageView pillInputs, pillWifi, pillSettings;
 
-    private View pageHome, pagePrayer;
-    private TextView tabHome, tabPrayer;
+    private View pageHome, pageApps, pagePrayer;
+    /** One segment per page, indexed by PAGE_*. */
+    private final TextView[] tabs = new TextView[3];
     private View tabTrack, tabThumb;
     private LinearLayout tabSegments;
     private TextView prayerLocation, prayerNext;
@@ -95,14 +100,17 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     private final TextView[] tileNames = new TextView[SCHED_KEYS.length];
     private final TextView[] tileTimes = new TextView[SCHED_KEYS.length];
 
-    private final List<AppItem> gridItems = new ArrayList<>();
-    private final List<AppItem> dockItems = new ArrayList<>();
+    private final List<AppItem> favItems = new ArrayList<>();
+    private final List<AppItem> appItems = new ArrayList<>();
 
     private boolean pendingRemoteInputs;
-    private boolean prayerTab;
+    /** Which page is showing: one of PAGE_HOME, PAGE_APPS, PAGE_PRAYER. */
+    private int page = PAGE_HOME;
+    /** Column count shared by both app grids, read from the config. */
+    private int columns = 5;
 
-    private int lastGridPos = 0;
-    private int lastDockPos = 0;
+    private int lastFavPos = 0;
+    private int lastAppsPos = 0;
     private String signature = "";
 
     /** Subuh..Isya times for the cached day, or null until the API answers. */
@@ -159,12 +167,13 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUi();
 
-        grid = findViewById(R.id.grid);
-        dock = findViewById(R.id.dock);
+        favGrid = findViewById(R.id.fav_grid);
+        appGrid = findViewById(R.id.app_grid);
         glow = findViewById(R.id.glow);
         prayer = findViewById(R.id.prayer);
         clock = findViewById(R.id.clock);
         date = findViewById(R.id.date);
+        hijri = findViewById(R.id.hijri);
         verse = findViewById(R.id.verse);
         verseRef = findViewById(R.id.verse_ref);
         pillInputs = findViewById(R.id.pill_inputs);
@@ -172,9 +181,11 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         pillSettings = findViewById(R.id.pill_settings);
 
         pageHome = findViewById(R.id.page_home);
+        pageApps = findViewById(R.id.page_apps);
         pagePrayer = findViewById(R.id.page_prayer);
-        tabHome = findViewById(R.id.tab_home);
-        tabPrayer = findViewById(R.id.tab_prayer);
+        tabs[PAGE_HOME] = findViewById(R.id.tab_home);
+        tabs[PAGE_APPS] = findViewById(R.id.tab_apps);
+        tabs[PAGE_PRAYER] = findViewById(R.id.tab_prayer);
         tabTrack = findViewById(R.id.tab_track);
         tabThumb = findViewById(R.id.tab_thumb);
         tabSegments = findViewById(R.id.tab_segments);
@@ -227,7 +238,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         if (System.currentTimeMillis() - lastVerseFetch > 5 * 60 * 1000L) loadVerse();
         if (pendingRemoteInputs) {
             pendingRemoteInputs = false;
-            grid.post(this::showInputsMenu);
+            pillInputs.post(this::showInputsMenu);
         } else {
             restoreFocus();
         }
@@ -277,66 +288,87 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     // ------------------------------------------------------------------- lists
 
     private void setupLists() {
-        int columns = getResources().getInteger(R.integer.columns);
+        columns = getResources().getInteger(R.integer.columns);
 
-        grid.setLayoutManager(new GridLayoutManager(this, columns));
-        grid.setColumns(columns);
-        grid.setEdgeListener(new FocusRecyclerView.EdgeListener() {
-            @Override public void onTopEdge() { focusActiveTab(); }
-            @Override public void onBottomEdge() {
-                if (!dockItems.isEmpty()) dock.focusPosition(lastDockPos);
-            }
-        });
-
-        dock.setLayoutManager(new LinearLayoutManager(this, RecyclerView.HORIZONTAL, false));
-        dock.setHorizontalList(true);
-        dock.setEdgeListener(new FocusRecyclerView.EdgeListener() {
-            @Override public void onTopEdge() {
-                if (!gridItems.isEmpty()) grid.focusPosition(lastGridPos);
-                else focusPill(pillInputs);
-            }
-            @Override public void onBottomEdge() { }
-        });
+        // Both pages play by the same grid rules: one row or column per press,
+        // and the top edge hands focus back to the tab bar.
+        for (FocusRecyclerView list : new FocusRecyclerView[]{favGrid, appGrid}) {
+            list.setLayoutManager(new GridLayoutManager(this, columns));
+            list.setColumns(columns);
+            list.setEdgeListener(new FocusRecyclerView.EdgeListener() {
+                @Override public void onTopEdge() { focusActiveTab(); }
+                @Override public void onBottomEdge() { }   // last row: stay put
+            });
+        }
+        // Re-place the favourites whenever Home changes size or content.
+        favGrid.addOnLayoutChangeListener(
+                (v, l, t, r, b, ol, ot, or, ob) -> alignFavorites());
 
         buildAppLists();
     }
 
     private void buildAppLists() {
         List<AppItem> all = AppItem.loadAll(this);
-        Set<String> dockPkgs = new HashSet<>();
-        for (String p : getResources().getStringArray(R.array.dock_apps)) dockPkgs.add(p);
 
-        dockItems.clear();
-        gridItems.clear();
-
-        String[] order = getResources().getStringArray(R.array.dock_apps);
-        for (String pkg : order) {
+        // Home shows only the configured favourites, in config order; missing
+        // packages are skipped rather than leaving a hole in the row.
+        favItems.clear();
+        for (String pkg : getResources().getStringArray(R.array.favorite_apps)) {
             for (AppItem item : all) {
                 if (item.pkg.equals(pkg)) {
-                    dockItems.add(item);
+                    favItems.add(item);
                     break;
                 }
             }
         }
-        for (AppItem item : all) {
-            if (!dockPkgs.contains(item.pkg)) gridItems.add(item);
+        // The Apps page lists everything, so no app becomes unreachable.
+        appItems.clear();
+        appItems.addAll(all);
+
+        if (favAdapter == null) {
+            favAdapter = new AppAdapter(favItems, R.layout.item_favorite, this);
+            favGrid.setAdapter(favAdapter);
+        } else {
+            favAdapter.notifyDataSetChanged();
         }
 
-        if (gridAdapter == null) {
-            gridAdapter = new AppAdapter(gridItems, false, this);
-            grid.setAdapter(gridAdapter);
+        if (appAdapter == null) {
+            appAdapter = new AppAdapter(appItems, R.layout.item_app, this);
+            appGrid.setAdapter(appAdapter);
         } else {
-            gridAdapter.notifyDataSetChanged();
-        }
-
-        if (dockAdapter == null) {
-            dockAdapter = new AppAdapter(dockItems, true, this);
-            dock.setAdapter(dockAdapter);
-        } else {
-            dockAdapter.notifyDataSetChanged();
+            appAdapter.notifyDataSetChanged();
         }
 
         signature = signatureOf(all);
+        favGrid.post(this::alignFavorites);
+    }
+
+    /** Pins the favourite cards to the bottom edge of Home, right where the
+     *  glow sits; a list that outgrows the block starts at the top and
+     *  scrolls instead of running off the bottom. */
+    private void alignFavorites() {
+        if (favGrid == null) return;
+        if (favItems.isEmpty()) {
+            favGrid.setPadding(favGrid.getPaddingLeft(), 0,
+                    favGrid.getPaddingRight(), 0);
+            return;
+        }
+        int height = favGrid.getHeight();
+        RecyclerView.LayoutManager lm = favGrid.getLayoutManager();
+        View first = lm == null ? null : lm.findViewByPosition(0);
+        if (height == 0 || first == null) return;   // not laid out yet
+
+        ViewGroup.LayoutParams lp = first.getLayoutParams();
+        int margins = lp instanceof ViewGroup.MarginLayoutParams
+                ? ((ViewGroup.MarginLayoutParams) lp).topMargin
+                        + ((ViewGroup.MarginLayoutParams) lp).bottomMargin
+                : 0;
+        int rows = (favItems.size() + columns - 1) / columns;
+        int pad = Math.max(0, height - rows * (first.getHeight() + margins));
+        if (pad != favGrid.getPaddingTop()) {
+            favGrid.setPadding(favGrid.getPaddingLeft(), pad,
+                    favGrid.getPaddingRight(), 0);
+        }
     }
 
     private String signatureOf(List<AppItem> all) {
@@ -350,7 +382,9 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         if (!signatureOf(all).equals(signature)) {
             String focusedPkg = currentFocusedPkg();
             buildAppLists();
-            if (focusedPkg != null) focusPackage(focusedPkg);
+            // The focused app may be the one that disappeared: land on the
+            // tab bar instead of leaving the remote with nowhere to go.
+            if (focusedPkg != null && !focusPackage(focusedPkg)) focusActiveTab();
         }
     }
 
@@ -361,8 +395,9 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         if (rv == null) return null;
         int pos = rv.getChildAdapterPosition(f);
         if (pos == RecyclerView.NO_POSITION) return null;
-        AppAdapter a = rv == grid ? gridAdapter : dockAdapter;
-        return pos < a.getItemCount() ? a.pkgAt(pos) : null;
+        AppAdapter a = rv == favGrid ? favAdapter : rv == appGrid ? appAdapter : null;
+        if (a == null || pos >= a.getItemCount()) return null;
+        return a.pkgAt(pos);
     }
 
     private RecyclerView findParentRecycler(View v) {
@@ -421,36 +456,37 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         }
     }
 
-    private void focusPill(View pill) {
-        pill.requestFocus();
-    }
-
     // ------------------------------------------------------------------- tabs
 
     private void setupTabs() {
-        tabHome.setSelected(true);
+        tabs[PAGE_HOME].setSelected(true);
 
-        View[] tabs = {tabHome, tabPrayer};
         for (int i = 0; i < tabs.length; i++) {
             final int index = i;
-            final boolean prayer = index == 1;
             // Walking onto a segment opens its page, like a TV tab bar.
             tabs[i].setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus) showPage(prayer, false);
+                if (hasFocus) showPage(index, false);
             });
             // OK steps into the page that is showing.
-            tabs[i].setOnClickListener(v -> showPage(prayer, true));
+            tabs[i].setOnClickListener(v -> showPage(index, true));
             tabs[i].setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        return index == 0;             // don't fall off the bar
+                        return index == 0;               // don't fall off the bar
                     case KeyEvent.KEYCODE_DPAD_UP:
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         return openPageContent();
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        if (index == tabs.length - 1) {
+                            // Last segment: step across to the utility pills.
+                            pillInputs.requestFocus();
+                            return true;
+                        }
+                        return false;                    // right walks along the bar
                     default:
-                        return false;                  // right walks on to the pills
+                        return false;
                 }
             });
         }
@@ -469,7 +505,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
 
     /** Moves the amber glass capsule under the segment owning the open page. */
     private void positionTabThumb() {
-        View seg = prayerTab ? tabPrayer : tabHome;
+        View seg = tabs[page];
         if (seg.getWidth() == 0 || tabThumb == null) return;
         int target = tabSegments.getLeft() + seg.getLeft();
         ViewGroup.LayoutParams lp = tabThumb.getLayoutParams();
@@ -490,39 +526,52 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
      * Opens a page. {@code moveFocus} is true when OK (or a click) should carry
      * the remote into the page's content; arrowing between segments does not.
      */
-    private void showPage(boolean prayer, boolean moveFocus) {
-        prayerTab = prayer;
-        tabHome.setSelected(!prayer);
-        tabPrayer.setSelected(prayer);
-        pageHome.setVisibility(prayer ? View.GONE : View.VISIBLE);
-        pagePrayer.setVisibility(prayer ? View.VISIBLE : View.GONE);
+    private void showPage(int target, boolean moveFocus) {
+        page = target;
+        for (int i = 0; i < tabs.length; i++) tabs[i].setSelected(i == target);
+        pageHome.setVisibility(target == PAGE_HOME ? View.VISIBLE : View.GONE);
+        pageApps.setVisibility(target == PAGE_APPS ? View.VISIBLE : View.GONE);
+        pagePrayer.setVisibility(target == PAGE_PRAYER ? View.VISIBLE : View.GONE);
         positionTabThumb();
 
-        if (prayer) {
-            refreshPrayerPage();
-            if (moveFocus) {
-                pagePrayer.post(() -> {
-                    View f = getCurrentFocus();
-                    if (f == null || !isInside(pagePrayer, f)) openPageContent();
-                });
-            }
-        } else if (moveFocus) {
+        if (target == PAGE_PRAYER) refreshPrayerPage();
+        if (!moveFocus) return;
+        if (target == PAGE_HOME) {
             restoreFocus();
+            return;
         }
+        // Keep the remote where it is when it is already inside the page.
+        final View content = target == PAGE_APPS ? pageApps : pagePrayer;
+        content.post(() -> {
+            View f = getCurrentFocus();
+            if (f == null || !isInside(content, f)) openPageContent();
+        });
     }
 
     private void focusActiveTab() {
-        (prayerTab ? tabPrayer : tabHome).requestFocus();
+        tabs[page].requestFocus();
+    }
+
+    /** The app grid and the app list belonging to the page that is showing. */
+    private FocusRecyclerView currentList() {
+        return page == PAGE_APPS ? appGrid : favGrid;
+    }
+
+    private List<AppItem> currentItems() {
+        return page == PAGE_APPS ? appItems : favItems;
     }
 
     /** Tab-bar / pill "down": first thing on the page that is showing. */
     private boolean openPageContent() {
-        if (prayerTab) {
+        if (page == PAGE_PRAYER) {
             if (tiles[0] != null) tiles[0].requestFocus();
             return true;
         }
-        if (!gridItems.isEmpty()) grid.focusPosition(lastGridPos);
-        else if (!dockItems.isEmpty()) dock.focusPosition(lastDockPos);
+        List<AppItem> items = currentItems();
+        if (items.isEmpty()) return true;
+        int pos = page == PAGE_APPS ? lastAppsPos : lastFavPos;
+        if (pos < 0 || pos >= items.size()) pos = 0;
+        currentList().focusPosition(pos);
         return true;
     }
 
@@ -684,17 +733,16 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
 
     @Override
     public void onAppFocused(View tile, AppItem item, int position) {
-        boolean isDockItem = findParentRecycler(tile) == dock;
-        if (isDockItem) {
-            lastDockPos = position;
+        if (findParentRecycler(tile) == favGrid) {
+            lastFavPos = position;
+            // Only Home shows the glow, so it keeps the last favourite's tint
+            // while the remote is over on the Apps page.
             glow.setColor(AppItem.ambientColor(item.banner != null ? item.banner : item.icon));
             glow.animate().alpha(0.76f).setDuration(180).start();
         } else {
-            lastGridPos = position;
-            glow.animate().alpha(0f).setDuration(100).start();
+            lastAppsPos = position;
         }
-        float scale = isDockItem ? 1.05f : 1.04f;
-        tile.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+        tile.animate().scaleX(1.04f).scaleY(1.04f).setDuration(150).start();
         saveFocus(item.pkg);
     }
 
@@ -724,41 +772,40 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
     }
 
     private void restoreFocus() {
-        if (prayerTab) {
+        if (page == PAGE_PRAYER) {
             // Focus on the tab bar or on page content is already correct.
             if (getCurrentFocus() == null) openPageContent();
             return;
         }
         String last = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_LAST, null);
         if (last != null && focusPackage(last)) return;
-        if (!gridItems.isEmpty()) {
-            grid.post(() -> grid.focusPosition(0));
-        } else if (!dockItems.isEmpty()) {
-            dock.post(() -> dock.focusPosition(0));
+        // The saved app can belong to another page: start at the top of this one.
+        if (!currentItems().isEmpty()) {
+            FocusRecyclerView list = currentList();
+            list.post(() -> list.focusPosition(0));
+        } else {
+            focusActiveTab();   // nothing to focus on the page: use the switch
         }
     }
 
+    /** Focuses {@code pkg} on the page that is showing. Returns false when the
+     *  package is not in that page's list, either because it lives on the other
+     *  page or because it has just been uninstalled. */
     private boolean focusPackage(String pkg) {
-        int gp = gridAdapter == null ? -1 : gridAdapter.positionOf(pkg);
-        if (gp >= 0) {
-            int finalGp = gp;
-            grid.post(() -> grid.focusPosition(finalGp));
-            return true;
-        }
-        int dp = dockAdapter == null ? -1 : dockAdapter.positionOf(pkg);
-        if (dp >= 0) {
-            int finalDp = dp;
-            dock.post(() -> dock.focusPosition(finalDp));
-            return true;
-        }
-        return false;
+        AppAdapter adapter = page == PAGE_APPS ? appAdapter : favAdapter;
+        if (adapter == null) return false;
+        int pos = adapter.positionOf(pkg);
+        if (pos < 0) return false;
+        FocusRecyclerView list = currentList();
+        list.post(() -> list.focusPosition(pos));
+        return true;
     }
 
     @Override
     public void onBackPressed() {
-        // Prayer Time goes back to Home; the utility bar goes to the last tile.
-        if (prayerTab) {
-            showPage(false, true);
+        // Apps and Prayer Time go back to Home; the top bar goes to the last tile.
+        if (page != PAGE_HOME) {
+            showPage(PAGE_HOME, true);
             return;
         }
         if (currentFocusedPkg() == null) restoreFocus();
@@ -772,7 +819,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
             pendingRemoteInputs = true;
             if (hasWindowFocus()) {
                 pendingRemoteInputs = false;
-                grid.post(this::showInputsMenu);
+                pillInputs.post(this::showInputsMenu);
             }
         } else {
             pendingRemoteInputs = false;
@@ -784,6 +831,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         Date now = new Date();
         clock.setText(timeFmt.format(now));
         date.setText(dateFmt.format(now));
+        hijri.setText(hijriLabel(now));
         prayer.setText(prayerLabel(now));
         updateScheduleHighlight();
 
@@ -794,6 +842,24 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
             shownDay = day;             // midnight: new prayer day
             loadPrayer();
             PrayerScheduler.arm(this);  // line up the new day's alerts
+        }
+    }
+
+    /** "12 Rabiul Awwal 1447 H": today's Umm al-Qura date in Indonesian,
+     *  converted on the device so it works offline and rolls over at midnight
+     *  together with the Gregorian date above it. */
+    private String hijriLabel(Date when) {
+        try {
+            Calendar cal = Calendar.getInstance(
+                    ULocale.forLanguageTag("en-u-ca-islamic-umalqura"));
+            cal.setTime(when);
+            int month = cal.get(Calendar.MONTH);
+            String[] names = getResources().getStringArray(R.array.hijri_months);
+            if (month < 0 || month >= names.length) return "";
+            return cal.get(Calendar.DAY_OF_MONTH) + " " + names[month]
+                    + " " + cal.get(Calendar.YEAR) + " H";
+        } catch (Throwable ignored) {
+            return "";     // no ICU here: the line simply stays empty
         }
     }
 
@@ -1162,7 +1228,7 @@ public class MainActivity extends Activity implements AppAdapter.Listener {
         }
 
         // Keep the remote where it was when the grid refreshed under it.
-        if (prayerTab && focus != null) restoreVideoFocus(focus[0], focus[1]);
+        if (page == PAGE_PRAYER && focus != null) restoreVideoFocus(focus[0], focus[1]);
     }
 
     /** Which grid cell (row, column) the remote is sitting on, or null. */

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home favourite: a wide card whose icon covers it edge to edge. There is
+     no label; only an amber wash (see card_focus_tint) shows focus, since the
+     icon now hides the card background. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="120dp"
+    android:layout_margin="4dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:clickable="true"
+    android:background="@drawable/app_card">
+
+    <!-- The icon fills the card. A square icon into the wide card is covered
+         rather than stretched, so nothing is distorted. -->
+    <ImageView
+        android:id="@+id/icon"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop" />
+
+    <!-- Focus only: duplicateParentState lets the selector follow the card. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/card_focus_tint"
+        android:duplicateParentState="true" />
+</FrameLayout>

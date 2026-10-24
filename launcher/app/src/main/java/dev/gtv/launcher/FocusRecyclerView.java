@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 /**
- * Grid/dock list with deterministic D-pad movement.
+ * App grid with deterministic D-pad movement.
  *
  * The stock behaviour lets the framework's focus search pick a neighbour by
  * geometry, which skips rows and falls out of the grid. Here every direction

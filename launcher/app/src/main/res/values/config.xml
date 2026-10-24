@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dock, left to right. Package names; order is the on-screen order. -->
-    <string-array name="dock_apps">
+    <!-- Home favourites, top-left to bottom-right. Package names; order is the
+         on-screen order. Everything else lives on the Apps page. -->
+    <string-array name="favorite_apps">
         <item>com.google.android.youtube.tv</item>
         <item>com.netflix.ninja</item>
         <item>org.smarttube.stable</item>
-        <item>com.useetv.stb</item>
-        <item>com.tcl.tv</item>
+        <item>com.live_streaming_tv.online_tv</item>
+        <item>com.vidio.android.tv</item>
+        <item>com.android.vending</item>
     </string-array>
 
-    <!-- Grid columns. Keep equal to dock size so the grid lines up with it. -->
-    <integer name="columns">5</integer>
+    <!-- Columns for the Home favourites grid and the Apps grid. Keep equal to
+         the favourite count so Home stays a single row of large tiles. -->
+    <integer name="columns">6</integer>
 
     <!-- App launched by the "Live TV" entry in the Inputs menu. -->
     <string name="live_tv_package">com.tcl.tv</string>
@@ -35,11 +38,13 @@
     <string name="prayer_location_label">Kab Ciamis</string>
 
     <!-- Prayer alerts. The reminder fires lead minutes before each of the
-         five prayers; at prayer time the adhan takes the screen and plays
-         for auto-stop minutes (or until OK is pressed). -->
+         five prayers; at prayer time the adhan takes the screen, plays the
+         recording through once and then closes itself. -->
     <bool name="prayer_alerts_enabled">true</bool>
     <integer name="prayer_alert_lead_minutes">5</integer>
-    <integer name="adhan_auto_stop_minutes">10</integer>
+    <!-- Safety cap only: the adhan normally ends with its recording. This
+         limit applies if a file reports no length (or cannot play). -->
+    <integer name="adhan_max_minutes">15</integer>
     <!-- Above zero arms a test pair instead of the real one: reminder at
          now + N seconds, adhan ten seconds later. Leave at 0 normally. -->
     <integer name="prayer_alert_test_delay_seconds">0</integer>
@@ -54,8 +59,8 @@
         <item>com.netflix.ninja</item>
         <item>com.google.android.youtube.tv</item>
         <item>com.vidio.android.tv</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
-        <item>com.tencent.qqlivei18n</item>
+        <item>org.smarttube.stable</item>
+        <item>com.live_streaming_tv.online_tv</item>
         <item>com.tcl.channelplus</item>
         <item>com.vidio.android.tv</item>
     </string-array>
@@ -63,8 +68,8 @@
         <item>Netflix</item>
         <item>YouTube</item>
         <item>VIDIO</item>
-        <item>Prime Video</item>
-        <item>WeTV</item>
+        <item>SmartTube</item>
+        <item>BitTV</item>
         <item>TCL Channel</item>
         <item>VIDIO</item>
     </string-array>
@@ -86,8 +91,8 @@
         <item>242</item><!-- Netflix: KEY_VIDEO_PREV -->
         <item>245</item><!-- YouTube: KEY_DISPLAY_OFF -->
         <item>743</item><!-- Video: EV_KEY 0x02e7 -->
-        <item>752</item><!-- Prime Video: EV_KEY 0x02f0 -->
-        <item>747</item><!-- WeTV: EV_KEY 0x02eb -->
+        <item>752</item><!-- Prime Video button: opens SmartTube -->
+        <item>747</item><!-- WeTV button: opens BitTV -->
         <item>227</item><!-- TCL Channel: EV_KEY KEY_SWITCHVIDEOMODE -->
     </integer-array>
 
@@ -107,5 +112,6 @@
         <item>233</item><!-- Settings: KEY_FORWARDMAIL -->
     </integer-array>
 
-    <!-- The launcher background is the layered drawable res/drawable/wallpaper.xml. -->
+    <!-- The launcher background is res/drawable/wallpaper.xml: the Medina photo
+         with a readability scrim over it. -->
 </resources>

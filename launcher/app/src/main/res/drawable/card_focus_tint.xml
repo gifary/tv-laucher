@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sits over a Home card whose icon now covers the whole card, so the
+     frosted/amber card background can no longer show through. A lit amber
+     wash plus a bright rim keeps the focused card readable at a glance. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#3DFFD166" />
+            <corners android:radius="22dp" />
+            <stroke
+                android:width="3dp"
+                android:color="#FFD166" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#00000000" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+</selector>

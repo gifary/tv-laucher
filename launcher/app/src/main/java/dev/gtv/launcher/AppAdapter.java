@@ -21,32 +21,38 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.VH> {
     }
 
     private final List<AppItem> items;
-    private final boolean dock;
+    private final int itemLayout;
     private final Listener listener;
     private int focusedPosition = -1;
 
-    public AppAdapter(List<AppItem> items, boolean dock, Listener listener) {
+    /** {@code itemLayout} is {@code R.layout.item_favorite} for the wide,
+     *  label-free Home cards or {@code R.layout.item_app} for the Apps grid. */
+    public AppAdapter(List<AppItem> items, int itemLayout, Listener listener) {
         this.items = items;
-        this.dock = dock;
+        this.itemLayout = itemLayout;
         this.listener = listener;
     }
 
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        int layout = dock ? R.layout.item_dock : R.layout.item_app;
-        View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(itemLayout, parent, false);
         ImageView icon = v.findViewById(R.id.icon);
         // Apple-TV style rounded icons: clip the (usually square) app icon.
         icon.setClipToOutline(true);
+        final boolean fillCard = itemLayout == R.layout.item_favorite;
+        final float cardRadius = 22f * v.getResources().getDisplayMetrics().density;
         icon.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
             public void getOutline(View view, android.graphics.Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                        view.getWidth() * 0.235f);
+                // A Home icon covers the whole card, so match the card's own
+                // 22dp corners; grid icons use the usual icon-style radius.
+                float radius = fillCard ? cardRadius : view.getWidth() * 0.235f;
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
             }
         });
-        return new VH(v, dock);
+        return new VH(v);
     }
 
     @Override
@@ -85,8 +91,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.VH> {
         });
 
         // Re-apply focused styling if this view is recycled while focused.
-        boolean focused = holder.itemView.hasFocus();
-        float scale = focused ? (dock ? 1.05f : 1.04f) : 1f;
+        float scale = holder.itemView.hasFocus() ? 1.04f : 1f;
         holder.itemView.setScaleX(scale);
         holder.itemView.setScaleY(scale);
         if (holder.label != null) holder.label.setAlpha(1f);
@@ -112,7 +117,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.VH> {
         final ImageView icon;
         final TextView label;
 
-        VH(View v, boolean dock) {
+        VH(View v) {
             super(v);
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);

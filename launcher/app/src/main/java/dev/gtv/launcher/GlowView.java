@@ -9,7 +9,7 @@ import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 
-/** Soft ambient glow behind the dock app name, tinted by the app's banner. */
+/** Soft ambient glow behind the favourites, tinted by the focused app. */
 public class GlowView extends View {
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);

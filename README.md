@@ -8,7 +8,8 @@ Terminal and use `TV_HOST` / `TV_PORT` to override it.
 ## Screenshots
 
 **Home** — frosted-glass cards, the segmented page switch, the next prayer
-under the clock, a random verse above the dock:
+under the clock, and a random verse under the favourites row (these shots
+predate the Home / Apps tab split):
 
 ![Home with glass cards and page switch](shots/92-glass-home.png)
 
@@ -46,12 +47,13 @@ gradle -p launcher assembleDebug
   `127.0.0.1:15555` through `tools/relay.py`).
 
 Install the APK and switch the remote-key service back on afterwards, because
-an install resets it. The prayer alerts also need the media pause listener
-allowed — it pauses a playing video when the adhan starts:
+an install resets it; `tools/remote-keys.sh` does that and leaves any other
+accessibility service alone. The prayer alerts also need the media pause
+listener allowed — it pauses a playing video when the adhan starts:
 
 ```sh
 python3 tools/tv.py --install launcher/app/build/outputs/apk/debug/app-debug.apk
-python3 tools/tv.py shell 'settings put secure accessibility_enabled 1'
+bash tools/remote-keys.sh
 python3 tools/tv.py shell 'cmd notification allow_listener dev.gtv.launcher/dev.gtv.launcher.MediaPauseListener'
 ```
 
@@ -96,13 +98,21 @@ app later, use `python3 tools/tv.py 'pm enable --user 0 <package>'` or
 disabled-package ledger contains only packages that remain disabled.
 
 The launcher accessibility service maps the physical Settings, Netflix,
-YouTube, and VIDIO buttons using Android `KeyEvent` scan codes 233, 242, 245,
-and 743 (`TCL_VIDIO`) in
-`launcher/app/src/main/res/values/config.xml`. Enable the service in Android
-Settings under Accessibility > Remote shortcut keys. To turn those mappings
-off, disable that accessibility service there. The service must be enabled and
-bound for the current user for the remote buttons to work. The VIDIO button
-opens VIDIO's profile picker.
+YouTube, VIDIO, Prime Video, and WeTV buttons using Android `KeyEvent` scan
+codes 233, 242, 245, 743, 752, and 747 (`TCL_VIDIO`, Prime Video, WeTV) in
+`launcher/app/src/main/res/values/config.xml`. The Prime Video and WeTV buttons
+are repurposed: Prime Video opens SmartTube and WeTV opens BitTV. Enable the
+service in Android Settings under Accessibility > Remote shortcut keys. To turn
+those mappings off, disable that accessibility service there. The service must
+be enabled and bound for the current user for the remote buttons to work. The
+VIDIO button opens VIDIO's profile picker.
+
+Some TVs drop that accessibility grant when the APK is reinstalled or the app
+is force-stopped, which makes every shortcut button stop responding while the
+mapping in `config.xml` is still correct. `bash tools/remote-keys.sh` puts the
+grant back (it keeps any other enabled accessibility service) and prints the
+bound state; long-pressing the gear pill on Home also opens the accessibility
+settings screen.
 
 ## Build and install
 
@@ -118,27 +128,37 @@ install fails. It then builds and installs the current source with `pm install
 -r`. It does not set the default HOME app or disable the stock launcher; do
 those only after checking HOME claimants and the device-specific recovery path.
 
-## Dock and wallpaper
+## Favourites and wallpaper
 
-The dock order is the order of package names in
-`launcher/app/src/main/res/values/config.xml`, in the `dock_apps` string array.
-Set the `columns` integer to the dock slot count (4, 5, 6, or 7) so the grid
-matches. Only include packages installed on the TV. The launcher puts the
-remaining visible apps in the grid.
+The Home favourites are the package names in
+`launcher/app/src/main/res/values/config.xml`, in the `favorite_apps` string
+array; that order is the on-screen order. Only include packages installed on
+the TV — a favourite that is not installed is skipped rather than leaving a
+hole. Set the `columns` integer to the favourite count (4, 5, 6, or 7) so a
+full list stays a single row of large tiles; the Apps page uses the same
+column count. Every other installed app lives on the Apps page.
 
-The launcher is tuned for comfortable viewing from a couch: app names are
-always shown, the clock and buttons use large type, and every card is frosted
-glass like an app icon — the focused card lights up amber with dark text.
-Keep the label sizes at 15sp or larger and the focus colors high-contrast
+The launcher is tuned for comfortable viewing from a couch: the top bar is
+kept compact (small clock block, 42dp tab switch, 50dp utility pills) so the
+pages get the height, the Apps grid labels stay 15sp or larger, and every
+card is frosted glass like an app icon — the focused card lights up amber
+with dark text. Home cards are icon-only, so their icons have to carry the
+identification.
+
+Keep the app label sizes at 15sp or larger and the focus colors high-contrast
 when changing the layouts.
 
-## Home and Prayer Time pages
+## Home, Apps and Prayer Time pages
 
 The header carries a segmented switch (a glass track with a capsule that
-slides) with two pages:
+slides) with three pages:
 
-- **Home** — clock, the next prayer under the date, the app grid, a random
-  Quran verse above the dock, and the utility pills.
+- **Home** — clock with the Gregorian date, the Hijri date under it and the
+  next prayer under that; a random Quran verse at the top of the content area,
+  and the favourite cards as wide icon-only tiles pinned to the bottom edge
+  (tinted by the ambient glow of the focused app), with the utility pills.
+- **Apps** — every installed launcher app in alphabetical order, including the
+  favourites, so no app becomes unreachable.
 - **Prayer Time** — today's full schedule, all eight times with the next
   prayer highlighted and the place name (for example "Ciamis, Jawa Barat")
   reverse geocoded from the TV's own coordinates; then a random Quran card
@@ -147,7 +167,8 @@ slides) with two pages:
   opens it in leanback YouTube.
 
 Left/Right on the switch changes pages, OK steps into the page's content,
-Down from the switch enters the content, and Back returns to Home.
+Down from the switch enters the content, and Back returns to Home from either
+of the other pages.
 
 Prayer times are calculated from the TV's own coordinates through
 `api.aladhan.com` with KEMENAG's calculation method (`prayer_method_id`,
@@ -164,11 +185,14 @@ SharedPreferences, so the pages keep showing the last content offline.
 Thumbnails are decoded through `Net.java`, which also keeps a small in-memory
 bitmap cache.
 
-The current wallpaper is a layered deep-navy, warm-amber, and teal gradient in
-`launcher/app/src/main/res/drawable/wallpaper.xml`. Edit its gradient colors to
-adjust the background. To use an image, add an image resource under
-`launcher/app/src/main/res/drawable/` and point the root background in
-`launcher/app/src/main/res/layout/activity_main.xml` at that drawable.
+The wallpaper is the Masjid an-Nabawi photo at dusk
+(`res/drawable-nodpi/medina2.png`) with a vertical scrim on top of it, both
+layered in `launcher/app/src/main/res/drawable/wallpaper.xml`. The scrim
+darkens the header and the favourite row so the clock and cards stay readable
+while the middle of the photo stays clear. Swapping in another photo means
+replacing `medina2.png` (16:9 works best, since the bitmap fills the screen)
+and adjusting the scrim stops if the new image is brighter or darker. The same
+photo is kept at the repository root as `medina2.png`.
 
 ## Prayer alerts
 
@@ -181,16 +205,21 @@ five prayers:
 - At prayer time the adhan starts: the sound first, then a full-screen
   notification raises the adhan screen over whatever is playing, while
   `MediaPauseListener` (a notification listener) pauses the playing video
-  a moment earlier. The screen shows the prayer in very large type, the
-  time, the place, and a countdown; **OK or Back stops it**, and it stops
-  by itself after `adhan_auto_stop_minutes` (10).
+  a moment earlier. The screen shows the prayer in very large type over the
+  Masjid an-Nabawi photo (`res/drawable-nodpi/nabawi.png`), the time, the
+  place, and an iOS-style glass Stop button; there is no countdown because
+  the screen closes by itself as soon as the adhan finishes. **OK or Back
+  stops it early.** `adhan_max_minutes` (15) is only a safety cap for a file
+  that reports no length. The photo is shipped as
+  `res/drawable-nodpi/nabawi.png`; the original is `nabawi.png` at the
+  repository root.
 
 The sound is a CC0 recording, *Beautiful adhan* by Adam-synagda from
 Wikimedia Commons (CC0 1.0), shipped as
-`launcher/app/src/main/res/raw/adhan.ogg`; if that file is missing the
-device's alarm tone is used instead. It plays on the media stream at
-whatever volume the family has set — the launcher never changes the
-volume.
+`launcher/app/src/main/res/raw/adhan.ogg`; it plays once (about 2½ minutes)
+and needs no timer. If the file is missing the device's alarm tone is used
+instead. It plays on the media stream at whatever volume the family has set
+— the launcher never changes the volume.
 
 The alarms are exact (`setExactAndAllowWhileIdle`, falling back to a
 non-exact alarm where Android 12+ refuses) and re-armed on boot, after

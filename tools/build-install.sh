@@ -63,3 +63,8 @@ echo "Building launcher source."
 echo "Installing the rebuilt launcher."
 install_apk "$APK"
 echo "Install complete. Set HOME and disable the stock launcher only after the separate device checks."
+
+# An install drops the accessibility grant on this TV, and without it none of
+# the remote shortcut buttons work. Put it back straight away.
+echo "Restoring the remote shortcut key service."
+TV_HOST="$TV_HOST" TV_PORT="$TV_PORT" bash "$ROOT/tools/remote-keys.sh"
